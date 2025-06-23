@@ -1,0 +1,36 @@
+# Service directories (cloned locally, not committed)
+services/*/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Runtime data
+*.log
+tmp/
+.tmp/
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+
+# Build artifacts
+dist/
+build/
+target/
+
+# Podman/Docker volumes
+*_data/

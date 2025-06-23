@@ -1,0 +1,71 @@
+# podman/podman-compose.yml
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: waystone-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-waystone_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-waystone}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-waystone_dev_password}
+    volumes:
+      - waystone_postgres_data:/var/lib/postgresql/data
+      - ../configs/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:Z
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"  # ✅ Fixed syntax
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: waystone-redis
+    volumes:
+      - waystone_redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"     # ✅ Correct syntax
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: waystone-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-waystone}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-waystone_rabbitmq_123}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    restart: unless-stopped
+
+#  api-gateway:
+#    build:
+#      context: ../services/api-gateway
+#    container_name: waystone-api-gateway
+#    environment:
+#      - PORT=${API_GATEWAY_PORT:-8080}
+#      - DB_URL=postgresql://${POSTGRES_USER:-waystone}:${POSTGRES_PASSWORD:-waystone_dev_password}@postgres:5432/${POSTGRES_DB:-waystone_dev}
+#      - REDIS_URL=redis://redis:${REDIS_PORT:-6379}
+#    ports:
+#      - "${API_GATEWAY_PORT:-8080}:${API_GATEWAY_PORT:-8080}"
+#    depends_on:
+#      - postgres
+#      - redis
+#    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: waystone-prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: waystone-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    restart: unless-stopped
+
+volumes:
+  waystone_postgres_data:
+  waystone_redis_data:
