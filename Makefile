@@ -29,7 +29,7 @@ dev: infra-up services-dev
 	@echo "Monitoring: http://localhost:3000"
 
 services-dev:
-	podman compose -f podman/podman-compose.yml --env-file .env up api-gateway
+	podman compose -f podman/podman-compose.yml --env-file .env up -d api-gateway url-service
 
 infra-up:
 	podman compose -f podman/podman-compose.yml --env-file .env up -d postgres redis prometheus grafana rabbitmq
@@ -37,4 +37,13 @@ infra-up:
 clean:
 	podman compose -f   podman/podman-compose.yml down -v
 	podman system prune -f
+
+up:
+	podman compose -f podman/podman-compose.yml up --build
+
+down:
+	podman compose -f podman/podman-compose.yml down
+
+logs:
+	podman compose -f podman/podman-compose.yml logs -f
 

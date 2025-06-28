@@ -1,6 +1,50 @@
 # podman/podman-compose.yml
 
 services:
+  # SERVICES
+  api-gateway:
+    build:
+      context: ../services/api-gateway
+    container_name: waystone-api-gateway
+    environment:
+      - PORT=${API_GATEWAY_PORT:-8080}
+      - URL_SERVICE_ADDR=url-service:${URL_GRPC_PORT:-50051}
+      - REDIS_ADDR=redis:${REDIS_PORT:-6379}
+      - RABBITMQ_ADDR=rabbitmq:${RABBITMQ_PORT:-5672}
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:${API_GATEWAY_PORT:-8080}"
+    restart: unless-stopped
+    networks:
+      - waystone-frontend-net
+      - waystone-backend-net
+    depends_on:
+      - redis
+      - rabbitmq
+
+  url-service:
+    build:
+      context: ../services/url
+    container_name: waystone-url-service
+    environment:
+      - GRPC_PORT=${URL_GRPC_PORT:-50051}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${POSTGRES_DB:-waystone_dev}
+      - DB_USER=${POSTGRES_USER:-waystone}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-waystone_dev_password}
+      - REDIS_ADDR=redis:${REDIS_PORT:-6379}
+      - RABBITMQ_ADDR=rabbitmq:${RABBITMQ_PORT:-5672}
+    networks:
+      - waystone-backend-net
+      - waystone-data-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # INFRA
   postgres:
     image: postgres:16-alpine
     container_name: waystone-postgres
@@ -12,8 +56,15 @@ services:
       - waystone_postgres_data:/var/lib/postgresql/data
       - ../configs/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:Z
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"  # ✅ Fixed syntax
+      - "${POSTGRES_PORT:-5432}:5432"
     restart: unless-stopped
+    networks:
+      - waystone-data-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-waystone}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   redis:
     image: redis:7.2-alpine
@@ -21,8 +72,15 @@ services:
     volumes:
       - waystone_redis_data:/data
     ports:
-      - "${REDIS_PORT:-6379}:6379"     # ✅ Correct syntax
+      - "${REDIS_PORT:-6379}:6379"
     restart: unless-stopped
+    networks:
+      - waystone-data-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
@@ -34,38 +92,38 @@ services:
       - "${RABBITMQ_PORT:-5672}:5672"
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     restart: unless-stopped
+    networks:
+      - waystone-data-net
 
-#  api-gateway:
-#    build:
-#      context: ../services/api-gateway
-#    container_name: waystone-api-gateway
-#    environment:
-#      - PORT=${API_GATEWAY_PORT:-8080}
-#      - DB_URL=postgresql://${POSTGRES_USER:-waystone}:${POSTGRES_PASSWORD:-waystone_dev_password}@postgres:5432/${POSTGRES_DB:-waystone_dev}
-#      - REDIS_URL=redis://redis:${REDIS_PORT:-6379}
-#    ports:
-#      - "${API_GATEWAY_PORT:-8080}:${API_GATEWAY_PORT:-8080}"
-#    depends_on:
-#      - postgres
-#      - redis
-#    restart: unless-stopped
-
+# MONITORING
   prometheus:
     image: prom/prometheus:v2.48.0
     container_name: waystone-prometheus
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
     restart: unless-stopped
+    networks:
+      - waystone-frontend-net
 
   grafana:
     image: grafana/grafana:10.2.0
     container_name: waystone-grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
     ports:
       - "${GRAFANA_PORT:-3000}:3000"
     restart: unless-stopped
+    networks:
+      - waystone-frontend-net
 
 volumes:
   waystone_postgres_data:
   waystone_redis_data:
+
+networks:
+  waystone-frontend-net:
+    driver: bridge
+  waystone-backend-net:
+    driver: bridge
+  waystone-data-net:
+    driver: bridge
