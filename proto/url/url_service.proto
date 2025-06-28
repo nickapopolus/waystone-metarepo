@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package urlservice.v1;
+
+option go_package = "proto/urlservice/v1";
+
+import "google/protobuf/timestamp.proto";
+
+service URLService {
+
+rpc CreateURL(CreateURLRequest) returns (CompleteURLResponse);
+
+}
+
+message CreateURLRequest {
+  string original_url = 1;
+  optional string custom_slug = 2;
+  optional int64 max_clicks = 3;
+  optional google.protobuf.Timestamp epiration_date = 4;
+  bool is_active = 5;
+}
+
+message CompleteURLResponse {
+  string id = 1;
+  string user_id = 2;
+  string original_url = 3;
+  string slug = 4;
+  optional string custom_slug = 5;
+  string short_url = 6;
+  optional int64 max_clicks = 7;
+  int64 click_count = 8;
+  bool is_active = 9;
+  optional google.protobuf.Timestamp expiration_date = 10;
+  google.protobuf.Timestamp creation_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
