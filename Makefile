@@ -47,10 +47,10 @@ clean:
 	podman system prune -f
 
 up:
-	podman compose -f podman/podman-compose.yml up --build
+	podman compose -f podman/podman-compose.yml up --build -d
 
 down:
-	podman compose -f podman/podman-compose.yml down
+	podman compose -f podman/podman-compose.yml down -d	
 
 logs:
 	podman compose -f podman/podman-compose.yml logs -f
